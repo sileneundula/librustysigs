@@ -9,7 +9,7 @@
 //!     - [X] SPHINCS+
 //!         - [X] Generation
 //!         - [X] Signing
-//!         - [] Verification
+//!         - [X] Verification
 //! - [] Hashing
 //!     - [] SHA3
 //!     - [] BLAKE2s (8-byte)
@@ -82,6 +82,59 @@ pub struct PublicKeyDigest(pub String);
 
 #[derive(Serialize,Deserialize)]
 pub struct PublicKeyDigestID(pub String);
+
+
+pub struct RustySignaturesUsage;
+
+impl RustySignaturesUsage {
+    pub fn verify(cert: UserCertificate, sig: RustySignature) -> bool {
+        let msg = Self::verification_process(&sig);
+        
+        let classical = cert.clkey.verify(sig.clsig, &msg).expect("Failed To Verify ED25519 Signature or Message");
+        let postquantum = cert.pqkey.verify(Message::new(&msg), sig.pqsig).expect("Failed To Verify SPHINCS+ Signature or Message");
+
+        if classical == true && postquantum == true {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+    fn verification_process(sig: &RustySignature) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(sig.signinginfo.yamalize().as_bytes());
+        v.extend_from_slice(&sig.message);
+
+        return v
+    }
+    fn verify_pk(cert: &UserCertificate, sig: &RustySignature) -> bool {
+
+        let mut s: String = String::new();
+
+        s.push_str(cert.clkey.to_hex_string().as_str());
+        s.push_str(":");
+        s.push_str(cert.pqkey.to_hex_string().expect("Failed To Get SPHINCS+").as_str());
+
+        let mut hasher = Sha3Hasher::new(224);
+        let digest = SlugDigest::from_bytes(&hasher.digest(s.as_bytes())).expect("Failed To Hash");
+        let final_digest = digest.to_string().to_string();
+
+        let pk_hash = sig.signinginfo.pk_hash.clone();
+        let id = sig.signinginfo.id.clone();
+
+        let mut hasher = SlugBlake2sHasher::new(6);
+        let output = hasher.hash(pk_hash);
+        let blake2s_digest = SlugDigest::from_bytes(&output).unwrap();
+        let final_blake2s_digest = blake2s_digest.to_string().to_string();
+
+        if &pk_hash == final_digest {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+}
 
 #[derive(Serialize,Deserialize, Clone)]
 pub struct SigningInfo {
@@ -189,6 +242,9 @@ impl UserCertificateFull {
     pub fn export(&self) {
 
     }
+    pub fn publiccert(&self) -> UserCertificate {
+        return self.cert.clone()
+    }
 }
 
 
@@ -209,4 +265,17 @@ pub enum Algorithms {
     // Speed: FAST
     // Lattices
     ED25519,
+}
+
+
+#[test]
+fn nw() {
+    let privcert = UserCertificateFull::generate();
+    let rustysig = privcert.sign("This is my first message on the internet","123456789");
+
+    let cert = privcert.publiccert();
+
+    let sig_validility = RustySignaturesUsage::verify(cert, rustysig);
+
+    println!("Is Valid: {}", sig_validility)
 }
