@@ -1,5 +1,7 @@
 [package]
 name = "librustysigs"
+authors = ["silene0259","yugensource"]
+description = "Rusty Signatures"
 version = "0.1.0"
 edition = "2024"
 
