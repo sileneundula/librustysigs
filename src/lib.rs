@@ -10,18 +10,33 @@
 //!         - [X] Generation
 //!         - [X] Signing
 //!         - [X] Verification
-//! - [] Hashing
-//!     - [] SHA3
-//!     - [] BLAKE2s (8-byte)
+//!         - Add RNG
+//! - [X] Hashing
+//!     - [X] SHA3
+//!     - [X] BLAKE2s (8-byte)
 //! - [] Server To Store Keys
 //!     - [] Decentralized
 //!     - [] Nonce (PoW)
 //! - [] GitHub Attribute Tag
 //! - [] Security Audits
 //! - [] Zeroize
+//! - [] Error-Checking
+//! - [] Base58 ID
+//! 
+//! 
+//! - [] Code Auditing
+//!     - [] No Unsafe Code
+//!     - [] Dependecies
+//!     - [] Cargo.toml
+//!     - [] Cargo.lock
+//!     - [] .gitignore
+//!     - [] LICENSE
+//!     - [] README
 //! 
 //! 
 //! Key Each Hash Iteration With Randomness
+//! 
+//! 
 
 use libslug::slugcrypt::internals::messages::Message;
 // Signatures
@@ -40,6 +55,15 @@ use libslug::slugcrypt::internals::csprng::SlugCSPRNG;
 // Serialization
 use serde::{Serialize,Deserialize};
 use serde_yaml;
+
+/// Registry for Keys
+pub mod registry;
+
+pub mod timestamping;
+
+pub mod analysis;
+
+pub mod fs;
 
 
 #[derive(Serialize,Deserialize,Clone)]
@@ -87,13 +111,17 @@ pub struct PublicKeyDigestID(pub String);
 pub struct RustySignaturesUsage;
 
 impl RustySignaturesUsage {
+    pub fn new() -> UserCertificateFull {
+        UserCertificateFull::generate()
+    }
     pub fn verify(cert: UserCertificate, sig: RustySignature) -> bool {
         let msg = Self::verification_process(&sig);
+        let hash_validility = Self::verify_pk(&cert, &sig);
         
         let classical = cert.clkey.verify(sig.clsig, &msg).expect("Failed To Verify ED25519 Signature or Message");
         let postquantum = cert.pqkey.verify(Message::new(&msg), sig.pqsig).expect("Failed To Verify SPHINCS+ Signature or Message");
 
-        if classical == true && postquantum == true {
+        if classical == true && postquantum == true && hash_validility == true {
             return true
         }
         else {
@@ -123,11 +151,11 @@ impl RustySignaturesUsage {
         let id = sig.signinginfo.id.clone();
 
         let mut hasher = SlugBlake2sHasher::new(6);
-        let output = hasher.hash(pk_hash);
+        let output = hasher.hash(&pk_hash);
         let blake2s_digest = SlugDigest::from_bytes(&output).unwrap();
         let final_blake2s_digest = blake2s_digest.to_string().to_string();
 
-        if &pk_hash == final_digest {
+        if pk_hash.clone() == final_digest && id.clone() == final_blake2s_digest {
             return true
         }
         else {
