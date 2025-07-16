@@ -6,13 +6,13 @@
 //! 
 //! - [] Basic Signature Implementation
 //!     - [X] ED25519
-//!     - [X] SPHINCS+
+//!     - [X] SPHINCS+ (SHAKE256)
 //!         - [X] Generation
 //!         - [X] Signing
 //!         - [X] Verification
 //!         - Add RNG
 //! - [X] Hashing
-//!     - [X] SHA3
+//!     - [X] SHA3 (SHA3-224)
 //!     - [X] BLAKE2s (8-byte)
 //! - [] Server To Store Keys
 //!     - [] Decentralized
@@ -23,6 +23,9 @@
 //! - [] Error-Checking
 //! - [] Base58 ID
 //! 
+//! - [X] ShulginSigning
+//!     - [X] Includes Cryptographic Randomness In Signature (using 64 bytes argon2id and oscsprng)
+//!     - [X] Includes Public Key Checks Using SHA3-224
 //! 
 //! - [] Code Auditing
 //!     - [] No Unsafe Code
@@ -116,7 +119,7 @@ impl RustySignaturesUsage {
     }
     pub fn verify(cert: UserCertificate, sig: RustySignature) -> bool {
         let msg = Self::verification_process(&sig);
-        let hash_validility = Self::verify_pk(&cert, &sig);
+        let hash_validility = Self::verify_pk_rand(&cert, &sig);
         
         let classical = cert.clkey.verify(sig.clsig, &msg).expect("Failed To Verify ED25519 Signature or Message");
         let postquantum = cert.pqkey.verify(Message::new(&msg), sig.pqsig).expect("Failed To Verify SPHINCS+ Signature or Message");
@@ -162,6 +165,37 @@ impl RustySignaturesUsage {
             return false
         }
     }
+    fn verify_pk_rand(cert: &UserCertificate, sig: &RustySignature) -> bool {
+        let mut x: Vec<u8> = vec![];
+        let mut s: String = String::new();
+
+        s.push_str(cert.clkey.to_hex_string().as_str());
+        s.push_str(":");
+        s.push_str(cert.pqkey.to_hex_string().expect("Failed To Get SPHINCS+").as_str());
+
+        x.extend_from_slice(&sig.signinginfo.argon);
+        x.extend_from_slice(&sig.signinginfo.oscsprng);
+        x.extend_from_slice(s.as_bytes());
+
+        let mut hasher = Sha3Hasher::new(224);
+        let digest = SlugDigest::from_bytes(&hasher.digest(&x)).expect("Failed To Hash");
+        let final_digest = digest.to_string().to_string();
+
+        let pk_hash = sig.signinginfo.pk_hash.clone();
+        let id = sig.signinginfo.id.clone();
+
+        let mut hasher = SlugBlake2sHasher::new(6);
+        let output = hasher.hash(&pk_hash);
+        let blake2s_digest = SlugDigest::from_bytes(&output).unwrap();
+        let final_blake2s_digest = blake2s_digest.to_string().to_string();
+
+        if pk_hash.clone() == final_digest && id.clone() == final_blake2s_digest {
+            return true
+        }
+        else {
+            return false
+        }
+    }
 }
 
 #[derive(Serialize,Deserialize, Clone)]
@@ -186,14 +220,19 @@ impl Signer {
         // - PublicKey Hash
         // - Add CSPRNG
         let (argonrng, oscsprng) = Self::csprng(nonce_pass.as_ref());
+        // PK_HASH
         let pk_hash = Self::key(pk,pksphincs);
+        // PK_HASH RANDOMIZED (Signed)
+        let pk_hash_randomnized_for_signing = Self::key_rand(&argonrng, &oscsprng, pk, pksphincs);
         let id = Self::id(&pk_hash);
+        let id_rand = Self::id(&pk_hash_randomnized_for_signing);
 
         return SigningInfo {
             argon: argonrng,
             oscsprng: oscsprng,
-            pk_hash: pk_hash,
-            id: id
+            // RNG-Signed
+            pk_hash: pk_hash_randomnized_for_signing, // SHA3-224
+            id: id_rand
         }
         
 
@@ -214,6 +253,24 @@ impl Signer {
 
         let output = hasher.digest(input_pk.as_bytes());
         let final_hash = SlugDigest::from_bytes(&output).expect("Failed To Get Hash From Bytes");
+        return final_hash.to_string().to_string()
+    }
+    fn key_rand(argon: &[u8], csprng: &[u8], pk: &ED25519PublicKey, pksphincs: &SPHINCSPublicKey) -> String {
+        let mut hasher = Sha3Hasher::new(224);
+        let mut input_to_hash: Vec<u8> = vec![];
+        
+        let mut input_pk: String = String::new();
+
+        input_pk.push_str(&pk.to_hex_string());
+        input_pk.push_str(&":");
+        input_pk.push_str(&pksphincs.to_hex_string().expect("Failed To Convert To Hex String"));
+
+        input_to_hash.extend_from_slice(argon);
+        input_to_hash.extend_from_slice(csprng);
+        input_to_hash.extend_from_slice(input_pk.as_bytes());
+
+        let output = hasher.digest(&input_to_hash);
+        let final_hash = SlugDigest::from_bytes(&output).unwrap();
         return final_hash.to_string().to_string()
     }
     fn id(s: &str) -> String {

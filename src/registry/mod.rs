@@ -72,7 +72,7 @@ impl ShulginSigning {
 
         return s
     }
-    pub fn get_delimter() -> String {
+    pub fn get_delimiter() -> String {
         return String::from(":")
     }
 }
