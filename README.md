@@ -1,8 +1,8 @@
 # LibRustySigs
 
-Author: Joseph P Tortorelli (Silene0259)
+Author: Silene0259
 
-Organization: YugenSource | LithiumSource
+Organization: LithiumSource
 
 ## Description
 
@@ -14,13 +14,17 @@ It offers rusty signatures to validate crates.
 
 The design of RustyCerts contains the following:
 
-- A Certificate Request (Rusty-CertReq)
 - A Keypair (ShulginSigning)
+- A Certificate Request (Rusty-CertReq)
 
 It uses the hash function:
 
-- **Finerprint:** BLAKE2B(48 or 384 bits)
-- **ID:** BLAKE2B(8 bytes)
+- **Finerprint:** BLAKE2B(48 or 384 bits) and SHA3-224
+- **ID:** BLAKE2s(8 bytes)
+
+## Contributors
+
+Contributions are welcome :)
 
 ## LICENSE
 
