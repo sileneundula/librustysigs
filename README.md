@@ -1,7 +1,8 @@
 # LibRustySigs
 
 Author: Joseph P Tortorelli (Silene0259)
-Organization: YugenSource
+
+Organization: YugenSource | LithiumSource
 
 ## Description
 
