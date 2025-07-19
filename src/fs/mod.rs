@@ -6,6 +6,10 @@ use libslug::slugcrypt::internals::signature::{ed25519::ED25519PublicKey, sphinc
 
 use crate::registry::ShulginSigning;
 
+
+/// # RustyFileKeys
+/// 
+/// This contains all needed information.
 pub struct RustyFileKeys {
     authors: Vec<String>,
     organization: String,
@@ -16,19 +20,31 @@ pub struct RustyFileKeys {
     keys: ShulginSigning,
 }
 
+/// # RustyFileMeta
+/// 
+/// Metadata
 pub struct RustyFileMeta {
     languages: Vec<Languages>,
     softwarelangauge: SoftwareLanguage,
 }
 
+/// # RustyFileConfig
+/// 
+/// This is the config file.
 pub struct RustyFileConfig {
     softwarelanguage: SoftwareLanguage,
 }
 
+/// # SoftwareLanguage
+/// 
+/// This lists the software used.
 pub enum SoftwareLanguage {
     Rust,
 }
 
+/// # Languages
+/// 
+/// This list the languages the data is in.
 pub enum Languages {
     en,
     ch,

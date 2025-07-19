@@ -1,25 +1,34 @@
 //! # Rusty-Sigs (Library)
 //! 
+//! **Author:** [silene | 0x20CB | DionysianMyst]
+//! 
+//! **Date Published:** July 2025
+//! 
+//! ## Description
+//! 
 //! This library is used for the interface for rusty-sigs verification of identities and other security-related functionality.
 //! 
 //! ## TODO
 //! 
-//! - [] Basic Signature Implementation
+//! - [X] Basic Signature Implementation (ShulginSigning)
 //!     - [X] ED25519
 //!     - [X] SPHINCS+ (SHAKE256)
 //!         - [X] Generation
 //!         - [X] Signing
 //!         - [X] Verification
-//!         - Add RNG
+//!         - [X] Add RNG
+//!     - [X] RustySignatures
+//!         - [X] SigningInfo (RNG + Digest)
 //! - [X] Hashing
 //!     - [X] SHA3 (SHA3-224)
 //!     - [X] BLAKE2s (8-byte)
+//!     - [X] BLAKE2B (48-byte)
 //! - [] Server To Store Keys
 //!     - [] Decentralized
 //!     - [] Nonce (PoW)
 //! - [] GitHub Attribute Tag
 //! - [] Security Audits
-//! - [] Zeroize
+//! - [X] Zeroize
 //! - [] Error-Checking
 //! - [] Base58 ID
 //! 
@@ -36,10 +45,31 @@
 //!     - [] LICENSE
 //!     - [] README
 //! 
+//! ## Code Example
 //! 
-//! Key Each Hash Iteration With Randomness
+//! ```rust
+//! use librustysigs::prelude::*;
 //! 
+//! fn main() {
+//!     // Certificates
+//!     let full_certificate = UserCertificateFull::generate();
+//!     let cert = full_certificate.publiccert();
 //! 
+//!     // Signature
+//!     let signature = full_certificate.sign("This message is being signed by ED25519 and SPHINCS+ by librustysigs.", "silene");
+//! 
+//!     // Verify
+//!     let is_valid_sig = RustySignaturesUsage::verify(cert, signature);
+//! 
+//!     // Asserts the signature is valid
+//!     assert_eq!(is_valid_sig, true);
+//! }
+//! 
+//! ```
+//! 
+//! ## License
+//! 
+//! APACHE-2.0
 
 use libslug::slugcrypt::internals::messages::Message;
 // Signatures
@@ -55,6 +85,8 @@ use libslug::slugcrypt::internals::digest::digest::SlugDigest; // SlugDigest
 // RNG
 use libslug::slugcrypt::internals::csprng::SlugCSPRNG;
 
+use zeroize::{Zeroize,ZeroizeOnDrop};
+
 // Serialization
 use serde::{Serialize,Deserialize};
 use serde_yaml;
@@ -62,14 +94,35 @@ use serde_yaml;
 /// Registry for Keys
 pub mod registry;
 
+/// Timestamping Functionality
 pub mod timestamping;
 
+/// Analysis of Code/Repo
 pub mod analysis;
 
+/// Filesystem
 pub mod fs;
 
+/// All neccessary components
+pub mod prelude;
 
-#[derive(Serialize,Deserialize,Clone)]
+
+/// # User Certificate
+/// 
+/// The User Certificate is used as a public certificate to verify signatures and store public keys.
+/// 
+/// ## Example Code
+/// 
+/// ```rust
+/// use librustysigs::prelude::*;
+/// 
+/// fn main() {
+///     let priv_cert = UserCertificateFull::generate();
+///     let cert = priv_cert.publiccert();
+/// }
+/// 
+/// ```
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificate {
     id: Option<u64>, // Stored on keyserver
     
@@ -80,7 +133,23 @@ pub struct UserCertificate {
 
 }
 
-#[derive(Serialize,Deserialize,Clone)]
+/// # User Certificate (Private/Full)
+/// 
+/// The User Certificate is used to store the secret keys as well as a public certificate to generate keypairs and sign data.
+/// 
+/// ## Example Code
+/// 
+/// ```rust
+/// use librustysigs::prelude::*;
+/// 
+/// fn main() {
+///     let priv_cert = UserCertificateFull::generate();
+///     let cert = priv_cert.publiccert();
+///     priv_cert.sign("This message is being signed by librustysigs using ED25519 and SPHINCS+", "password/nonce/rng")
+/// }
+/// 
+/// ```
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificateFull {
     cert: UserCertificate,
     // Secrets
@@ -89,7 +158,14 @@ pub struct UserCertificateFull {
     pqkeypub: SPHINCSPublicKey,
 }
 
-#[derive(Serialize,Deserialize)]
+/// # RustySignature
+/// 
+/// Rusty Signature is the struct used for defining the signature and easily verifying it using:
+/// 
+/// - Message (a vector of bytes)
+/// - SigningInfo (metadata and rng, as well as checks)
+/// - Signatures (ED25519 and SPHINCS+)
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
 pub struct RustySignature {
     message: Vec<u8>,
     signinginfo: SigningInfo,
@@ -98,31 +174,37 @@ pub struct RustySignature {
     pqsig: SPHINCSSignature,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
 pub struct MessageHash(pub String);
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
 pub struct MessageBytes(pub Vec<u8>);
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
 pub struct PublicKeyDigest(pub String);
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
 pub struct PublicKeyDigestID(pub String);
 
 
 pub struct RustySignaturesUsage;
 
 impl RustySignaturesUsage {
+    /// # New Certificate
+    /// 
+    /// Generates a new certificate using ShulginSigning.
     pub fn new() -> UserCertificateFull {
         UserCertificateFull::generate()
     }
+    /// # Verify
+    /// 
+    /// Verifies a signature against a user certificate.
     pub fn verify(cert: UserCertificate, sig: RustySignature) -> bool {
         let msg = Self::verification_process(&sig);
         let hash_validility = Self::verify_pk_rand(&cert, &sig);
         
-        let classical = cert.clkey.verify(sig.clsig, &msg).expect("Failed To Verify ED25519 Signature or Message");
-        let postquantum = cert.pqkey.verify(Message::new(&msg), sig.pqsig).expect("Failed To Verify SPHINCS+ Signature or Message");
+        let classical = cert.clkey.verify(sig.clsig.clone(), &msg).expect("Failed To Verify ED25519 Signature or Message");
+        let postquantum = cert.pqkey.verify(Message::new(&msg), sig.pqsig.clone()).expect("Failed To Verify SPHINCS+ Signature or Message");
 
         if classical == true && postquantum == true && hash_validility == true {
             return true
@@ -198,7 +280,10 @@ impl RustySignaturesUsage {
     }
 }
 
-#[derive(Serialize,Deserialize, Clone)]
+/// # SigningInfo
+/// 
+/// The `SigningInfo` is serialized to YAML and signed. It contains Argon2id RNG (with nonce), and OSCSPRNG for RNG. It also contains the public key hash with the RNG to thwart attacks on randomness while proving the public key in the signature. Finally, it contains the signature ID.
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
 pub struct SigningInfo {
     pub argon: [u8;32],
     pub oscsprng: [u8;32],
@@ -207,6 +292,7 @@ pub struct SigningInfo {
 }
 
 impl SigningInfo {
+    /// Serialize to YAML
     pub fn yamalize(&self) -> String {
         let signing_info = serde_yaml::to_string(&self).expect("Failed To Serialize SigningInfo");
         return signing_info
@@ -216,6 +302,9 @@ impl SigningInfo {
 pub struct Signer;
 
 impl Signer {
+    /// # Add To Signing
+    /// 
+    /// This method adds certain information to the signing process.
     pub fn add_to_signing<T: AsRef<str>>(nonce_pass: T, pk: &ED25519PublicKey, pksphincs: &SPHINCSPublicKey) -> SigningInfo {
         // - PublicKey Hash
         // - Add CSPRNG
@@ -283,6 +372,9 @@ impl Signer {
 // TODO: Fix CLONING
 
 impl UserCertificateFull {
+    /// # Generate
+    /// 
+    /// Generates a new certificate
     pub fn generate() -> Self {
         // Generate Secret Key
         let ed25519sk = ED25519SecretKey::generate();
@@ -302,6 +394,9 @@ impl UserCertificateFull {
             pqkeypub: sphincspk.clone(),
         }
     }
+    /// # Sign
+    /// 
+    /// Signs new data with a nonce/password for added entropy. The message is anything that can be convert to bytes. It then returns the RustySignature.
     pub fn sign<T: AsRef<[u8]>, U: AsRef<str>>(&self, message: T, password: U) -> RustySignature {
         let signing_info = Signer::add_to_signing(password.as_ref(), &self.cert.clkey, &self.cert.pqkey);
         
@@ -327,13 +422,23 @@ impl UserCertificateFull {
     pub fn export(&self) {
 
     }
+    /// Return `UserCertificate`
     pub fn publiccert(&self) -> UserCertificate {
         return self.cert.clone()
     }
 }
 
 
-#[derive(Serialize,Deserialize,Clone,Copy,PartialEq,PartialOrd)]
+/// # Algorithms
+/// 
+/// The Algorithms list the algorithms used in librustysigs. By default, ShulginSigning (ED25519+SPHINCS+ (SHAKE256)) is used.
+/// 
+/// The Algorithms are listed below:
+/// 
+/// 1. ShulginSigning
+/// 2. AnneSigning
+/// 3. ED25519
+#[derive(Serialize,Deserialize,Clone,PartialEq,PartialOrd,Zeroize,ZeroizeOnDrop)]
 pub enum Algorithms {
     ShulginSigning, // ED448 (or ED25519) + SPHINCS+ (SHAKE256) (ML-SLH)
     // SPHINCS+ (Post-Quantum)

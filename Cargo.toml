@@ -7,12 +7,12 @@ categories = ["cryptography","command-line-utilities","authentication","rust-pat
 license = "Apache-2.0"
 repository = "https://github.com/sileneundula/librustysigs"
 homepage = "https://github.com/sileneundula/librustysigs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 readme = "README.md"
 
 [dependencies]
-libslug = "0.4.0"
+libslug = "0.4.1"
 serde = {version = "1.0.0", features=["derive"]}
 serde_yaml = "=0.9.34"
 zeroize = "1.8.1"

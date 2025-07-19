@@ -15,11 +15,16 @@ use libslug::slugcrypt::internals::digest::digest::SlugDigest;
 
 use chrono::prelude::*;
 
+use zeroize::{Zeroize,ZeroizeOnDrop};
+
 pub struct RustySigsRegistry {
 
 }
 
-#[derive(Serialize,Deserialize,Clone)]
+/// # Certificate Request
+/// 
+/// The Certificate Request is a way of requesting a certificate to the server.
+#[derive(Serialize,Deserialize,Clone,Zeroize,ZeroizeOnDrop)]
 pub struct RustySigsCertRequest {
     version: u8, // 0: Alpha, 1: Beta, 2: Release, 3: Extended
     common_name: String,
@@ -35,7 +40,14 @@ pub struct RustySigsCertRequest {
 pub struct RustySigsConnect;
 
 /// # ShulginSigning
-#[derive(Serialize,Deserialize,Clone)]
+/// 
+/// ShulginSigning contains:
+/// 
+/// - id_hash: 8-bytes (BLAKE2B)
+/// - fingerprint: 48-bytes (BLAKE2B)
+/// - Public Key (ED25519) | 32 bytes
+/// - Public Key (SPHINCS+) | 64 bytes
+#[derive(Serialize,Deserialize,Clone,Zeroize,ZeroizeOnDrop)]
 pub struct ShulginSigning {
     id_hash: String, // 8-bytes
     fingerprint: String, // 48-bytes
@@ -45,6 +57,9 @@ pub struct ShulginSigning {
 }
 
 impl ShulginSigning {
+    /// # New ShulginSigning Cert
+    /// 
+    /// This contains all needed information for ShulginSigning
     pub fn new(classical_pk: ED25519PublicKey, sphincs_pk: SPHINCSPublicKey) -> Self {
         let hashable_str = Self::format_for_hashing(&classical_pk, &sphincs_pk);
         
@@ -72,6 +87,7 @@ impl ShulginSigning {
 
         return s
     }
+    /// Delimiter is `:`
     pub fn get_delimiter() -> String {
         return String::from(":")
     }
