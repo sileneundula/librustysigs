@@ -1,18 +1,19 @@
 [package]
 name = "librustysigs"
-authors = ["silene0259"]
+authors = ["silene0259", "0x20CB", "DionysianMyst"]
 description = "Rusty Signatures: A Secure Code Signing System"
 keywords = ["rustysigs", "rustysignatures", "authentication", "certificate", "signing"]
 categories = ["cryptography","command-line-utilities","authentication","rust-patterns","security"]
 license = "Apache-2.0"
 repository = "https://github.com/sileneundula/librustysigs"
 homepage = "https://github.com/sileneundula/librustysigs"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 readme = "README.md"
 
 [dependencies]
-libslug = "0.4.1"
+libslug = "0.5.0"
+slugencode = "0.1.0"
 serde = {version = "1.0.0", features=["derive"]}
 serde_yaml = "=0.9.34"
 zeroize = "1.8.1"
