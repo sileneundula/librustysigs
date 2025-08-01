@@ -1,8 +1,10 @@
 # LibRustySigs
 
-Author: Silene0259
+[![Crates.io Version](https://img.shields.io/crates/v/librustysigs)](https://crates.io/crates/librustysigs)
+![Crates.io License](https://img.shields.io/crates/l/librustysigs)
+![Deps.rs Crate Dependencies (latest)](https://img.shields.io/deps-rs/librustysigs/latest)
+![Crates.io Total Downloads](https://img.shields.io/crates/d/librustysigs)
 
-Organization: LithiumSource
 
 ## Description
 
