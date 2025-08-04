@@ -220,9 +220,11 @@ pub mod x59;
 #[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificate {
     id: Option<u64>, // Stored on keyserver
-    
+    id_8: String,
     alg: Algorithms,
-
+    fingerprint: String, // BLAKE2B(48)
+    
+    
     clkey: ED25519PublicKey,
     pqkey: SPHINCSPublicKey,
 
@@ -509,6 +511,9 @@ impl UserCertificatePriv {
         return Self {
             cert: UserCertificate { 
                 id: None, 
+                fingerprint: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
+                id_8: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
+
                 alg: Algorithms::ShulginSigning, 
                 clkey: ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), 
                 pqkey: sphincspk.clone() 
@@ -553,6 +558,23 @@ impl UserCertificatePriv {
 }
 
 
+impl UserCertificate {
+    /// Verify Fingerprint and ID8 (static) of -> ED25519PK:SPHINCSPK in BLAKE2B(48) and BLAKE2B(8)
+    pub fn verify(&self) -> bool {
+        // Verify Hash and ID8
+        let fp = get_fingerprint(&self.clkey, &self.pqkey);
+        let id8 = get_fingerprint_8(&self.clkey, &self.pqkey);
+
+        if self.fingerprint == fp && self.id_8 == id8 {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+}
+
+
 /// # Algorithms
 /// 
 /// The Algorithms list the algorithms used in librustysigs. By default, ShulginSigning (ED25519+SPHINCS+ (SHAKE256)) is used.
@@ -579,6 +601,32 @@ pub enum Algorithms {
     // Speed: FAST
     // Lattices
     ED25519,
+}
+
+fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+    let mut hasher = SlugBlake2bHasher::new(48);
+
+    let mut input: String = String::new();
+    input.push_str(ed25519.to_hex_string().as_str());
+    input.push_str(":");
+    input.push_str(sphincs.to_hex_string().unwrap().as_str());
+
+    let output = hasher.update(input.as_bytes());
+
+    return SlugDigest::from_bytes(&output).unwrap().to_string().to_string()
+}
+
+fn get_fingerprint_8(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+    let mut hasher = SlugBlake2bHasher::new(8);
+
+    let mut input: String = String::new();
+    input.push_str(ed25519.to_hex_string().as_str());
+    input.push_str(":");
+    input.push_str(sphincs.to_hex_string().unwrap().as_str());
+
+    let output = hasher.update(input.as_bytes());
+
+    return SlugDigest::from_bytes(&output).unwrap().to_string().to_string()
 }
 
 

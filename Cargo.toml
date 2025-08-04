@@ -12,12 +12,16 @@ edition = "2024"
 readme = "README.md"
 
 [dependencies]
+# /silene/slug
 libslug = "0.5.0"
 slugencode = "0.1.0"
+# Serde
 serde = {version = "1.0.0", features=["derive"]}
 serde_yaml = "=0.9.34"
+# Zeroize
 zeroize = "1.8.1"
-
+# HashMap
+hashbrown = "0.15.4"
 # Time
 chrono = {version = "0.4.41", features=["serde"]}
 

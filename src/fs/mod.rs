@@ -4,7 +4,29 @@
 
 use libslug::slugcrypt::internals::signature::{ed25519::ED25519PublicKey, sphincs_plus::SPHINCSPublicKey};
 
-use crate::registry::ShulginSigning;
+use crate::{registry::ShulginSigning, UserCertificate, UserCertificatePriv};
+
+use std::fs::*;
+
+
+type PrivateKeyID = String;
+
+
+pub struct RustySigsFileSystem {
+    keychain: Vec<UserCertificate>, // Other User Certificates
+    personal_keyring: Vec<UserCertificate>,
+    
+}
+
+pub struct MyCertificates {
+    current_state_8: String,
+    current_state: String,
+    
+    number_of_certificates: u32,
+    ids: Vec<PrivateKeyID>,
+    
+    certs: Vec<UserCertificatePriv>,
+}
 
 
 /// # RustyFileKeys
