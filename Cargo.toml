@@ -26,3 +26,9 @@ hashbrown = "0.15.4"
 chrono = {version = "0.4.41", features=["serde"]}
 
 hex = "0.4.3"
+
+# Certificate Format
+cms = "0.2.3"
+pem = "3.0.5"
+
+bincode = "2.0.1"

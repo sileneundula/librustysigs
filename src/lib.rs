@@ -138,7 +138,7 @@
 //! 
 //! - [ ] Verification Methods
 //! - [ ] Certificate Signing Request Feature
-//!     - [ ] CSR-RS
+//!     - [] CSR-RS
 //! - [ ] 
 //! 
 //! ### PrivUserCertificate
@@ -262,7 +262,7 @@ pub struct UserCertificatePriv {
 /// - Message (a vector of bytes)
 /// - SigningInfo (metadata and rng, as well as checks)
 /// - Signatures (ED25519 and SPHINCS+)
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
 pub struct RustySignature {
     message: Vec<u8>,
     signinginfo: SigningInfo,
@@ -394,6 +394,35 @@ impl SigningInfo {
         let signing_info = serde_yaml::to_string(&self).expect("Failed To Serialize SigningInfo");
         return signing_info
     }
+    /// BLAKE2B(64)
+    fn integrity_blake2(&self) -> Vec<u8> {
+        // 512 Blake2B | Switch to Blake2s on no_std version
+        let hasher = SlugBlake2bHasher::new(64);
+        return hasher.update(&self.yamalize().as_bytes());
+    }
+    /// SHA2-384
+    fn integrity_sha384(&self) -> Vec<u8> {
+        let hasher = Sha2Hasher::new(384);
+        hasher.update(&self.yamalize().as_bytes())
+    }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of SigningInfo (as Bytes)
+    pub fn get_integrity_as_bytes(&self, hasher: RustySignatureHashingIntegrity) -> Vec<u8> {
+        let output = match hasher {
+            RustySignatureHashingIntegrity::BLAKE2b_64 => self.integrity_blake2(),
+            RustySignatureHashingIntegrity::SHA2_384 => self.integrity_sha384(),
+        };
+
+        return output
+    }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of SigningInfo (as Hex)
+    pub fn integrity(&self, hasher: RustySignatureHashingIntegrity) -> String {
+        let output = SlugDigest::from_bytes(&self.get_integrity_as_bytes(hasher)).unwrap().to_string().to_string();
+        return output
+    }
 }
 
 impl RustySignature {
@@ -406,6 +435,9 @@ impl RustySignature {
         let hasher = Sha2Hasher::new(384);
         hasher.update(&self.message)
     }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of Message Bytes (as Bytes)
     pub fn get_integrity_as_bytes(&self, hasher: RustySignatureHashingIntegrity) -> Vec<u8> {
         let output = match hasher {
             RustySignatureHashingIntegrity::BLAKE2b_64 => self.integrity_blake2(),
@@ -414,6 +446,9 @@ impl RustySignature {
 
         return output
     }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of Message Bytes (as Hex)
     pub fn integrity(&self, hasher: RustySignatureHashingIntegrity) -> String {
         let output = SlugDigest::from_bytes(&self.get_integrity_as_bytes(hasher)).unwrap().to_string().to_string();
         return output
@@ -548,15 +583,23 @@ impl UserCertificatePriv {
             pqsig: sphincssig,
         }
     }
-    pub fn export(&self) {
-
+    /// # Export
+    /// 
+    /// Exports Certificate
+    pub fn export(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(self)
+    }
+    /// # Import
+    /// 
+    /// Imports Certificate
+    pub fn import<T: AsRef<str>>(s: T) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_str(s.as_ref())
     }
     /// Return `UserCertificate`
     pub fn publiccert(&self) -> UserCertificate {
         return self.cert.clone()
     }
 }
-
 
 impl UserCertificate {
     /// Verify Fingerprint and ID8 (static) of -> ED25519PK:SPHINCSPK in BLAKE2B(48) and BLAKE2B(8)
@@ -571,6 +614,12 @@ impl UserCertificate {
         else {
             return false
         }
+    }
+    pub fn export(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(&self)
+    }
+    pub fn import<T: AsRef<str>>(s: T) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_str(s.as_ref())
     }
 }
 
@@ -640,4 +689,11 @@ fn nw() {
     let sig_validility = RustySignaturesUsage::verify(cert, rustysig);
 
     println!("Is Valid: {}", sig_validility)
+}
+
+#[test]
+fn cert_test() {
+    let privcert = UserCertificatePriv::generate();
+    let yaml = privcert.export().unwrap();
+    println!("{}",yaml)
 }
