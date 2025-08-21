@@ -76,15 +76,15 @@ pub struct RustySigsRegistryCache {
 /// # Certificate Request
 /// 
 /// The Certificate Request is a way of requesting a certificate to the server.
-#[derive(Serialize,Deserialize,Clone,Zeroize,ZeroizeOnDrop)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct RustySigsCertRequest {
     version: u8, // 0: Alpha, 1: Beta, 2: Release, 3: Extended
     
     common_name: String,
     owners: Vec<String>,
-    //timestamp: Date<Utc>,
+    timestamp: DateTime<Utc>,
 
-    keypair: ShulginSigning,
+    keypair: UserCertificate,
 }
 
 /// # RustySigsConnect

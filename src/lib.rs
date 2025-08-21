@@ -138,7 +138,7 @@
 //! 
 //! - [ ] Verification Methods
 //! - [ ] Certificate Signing Request Feature
-//!     - [ ] CSR-RS
+//!     - [] CSR-RS
 //! - [ ] 
 //! 
 //! ### PrivUserCertificate
@@ -159,6 +159,8 @@
 //! ## License
 //! 
 //! APACHE-2.0
+
+use std::path::Path;
 
 use libslug::slugcrypt::internals::messages::Message;
 // Signatures
@@ -197,9 +199,13 @@ pub mod fs;
 /// All neccessary components
 pub mod prelude;
 
+/// RustyFunds
 pub mod rustyfunds;
 
+/// X59 Certificate Public-Key Infrastructure
 pub mod x59;
+
+pub const CERTVERSION: u8 = 1;
 
 
 /// # User Certificate
@@ -219,12 +225,15 @@ pub mod x59;
 /// ```
 #[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificate {
-    id: Option<u64>, // Stored on keyserver
+    pub version: u8,
+    pub id: Option<u64>, // Stored on keyserver
+    pub id_8: String,
+    pub alg: Algorithms,
+    pub fingerprint: String, // BLAKE2B(48)
     
-    alg: Algorithms,
-
-    clkey: ED25519PublicKey,
-    pqkey: SPHINCSPublicKey,
+    
+    pub clkey: ED25519PublicKey,
+    pub pqkey: SPHINCSPublicKey,
 
 }
 
@@ -260,7 +269,7 @@ pub struct UserCertificatePriv {
 /// - Message (a vector of bytes)
 /// - SigningInfo (metadata and rng, as well as checks)
 /// - Signatures (ED25519 and SPHINCS+)
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
+#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
 pub struct RustySignature {
     message: Vec<u8>,
     signinginfo: SigningInfo,
@@ -268,18 +277,6 @@ pub struct RustySignature {
     clsig: ED25519Signature,
     pqsig: SPHINCSSignature,
 }
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct MessageHash(pub String);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct MessageBytes(pub Vec<u8>);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct PublicKeyDigest(pub String);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct PublicKeyDigestID(pub String);
 
 
 pub struct RustySignaturesUsage;
@@ -392,9 +389,44 @@ impl SigningInfo {
         let signing_info = serde_yaml::to_string(&self).expect("Failed To Serialize SigningInfo");
         return signing_info
     }
+    /// BLAKE2B(64)
+    fn integrity_blake2(&self) -> Vec<u8> {
+        // 512 Blake2B | Switch to Blake2s on no_std version
+        let hasher = SlugBlake2bHasher::new(64);
+        return hasher.update(&self.yamalize().as_bytes());
+    }
+    /// SHA2-384
+    fn integrity_sha384(&self) -> Vec<u8> {
+        let hasher = Sha2Hasher::new(384);
+        hasher.update(&self.yamalize().as_bytes())
+    }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of SigningInfo (as Bytes)
+    pub fn get_integrity_as_bytes(&self, hasher: RustySignatureHashingIntegrity) -> Vec<u8> {
+        let output = match hasher {
+            RustySignatureHashingIntegrity::BLAKE2b_64 => self.integrity_blake2(),
+            RustySignatureHashingIntegrity::SHA2_384 => self.integrity_sha384(),
+        };
+
+        return output
+    }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of SigningInfo (as Hex)
+    pub fn integrity(&self, hasher: RustySignatureHashingIntegrity) -> String {
+        let output = SlugDigest::from_bytes(&self.get_integrity_as_bytes(hasher)).unwrap().to_string().to_string();
+        return output
+    }
 }
 
 impl RustySignature {
+    /// BLAKE2B (64 byte) digest of RustySignature
+    pub fn digest(&self) -> String {
+        let hasher = SlugBlake2bHasher::new(64);
+        let digest = hasher.update(&self.serialize_to_yaml().expect("Failed to serialize"));
+        SlugDigest::from_bytes(&digest).unwrap().to_string().to_string()
+    }
     fn integrity_blake2(&self) -> Vec<u8> {
         // 512 Blake2B | Switch to Blake2s on no_std version
         let hasher = SlugBlake2bHasher::new(64);
@@ -404,6 +436,9 @@ impl RustySignature {
         let hasher = Sha2Hasher::new(384);
         hasher.update(&self.message)
     }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of Message Bytes (as Bytes)
     pub fn get_integrity_as_bytes(&self, hasher: RustySignatureHashingIntegrity) -> Vec<u8> {
         let output = match hasher {
             RustySignatureHashingIntegrity::BLAKE2b_64 => self.integrity_blake2(),
@@ -412,12 +447,22 @@ impl RustySignature {
 
         return output
     }
+    /// # Integrity
+    /// 
+    /// Retrieves RustySignatureIntegrity of Message Bytes (as Hex)
     pub fn integrity(&self, hasher: RustySignatureHashingIntegrity) -> String {
         let output = SlugDigest::from_bytes(&self.get_integrity_as_bytes(hasher)).unwrap().to_string().to_string();
         return output
     }
+    pub fn serialize_to_yaml(&self) -> Result<String, serde_yaml::Error> {
+        let x = serde_yaml::to_string(&self)?;
+        Ok(x)
+    }
 }
 
+/// # RustySignatureHashingIntegrity
+/// 
+/// Hash the message or data.
 enum RustySignatureHashingIntegrity {
     BLAKE2b_64,
     SHA2_384,
@@ -507,8 +552,12 @@ impl UserCertificatePriv {
         let (sphincspk,sphincssk) = SPHINCSSecretKey::generate();
 
         return Self {
-            cert: UserCertificate { 
+            cert: UserCertificate {
+                version: CERTVERSION, 
                 id: None, 
+                fingerprint: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
+                id_8: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
+
                 alg: Algorithms::ShulginSigning, 
                 clkey: ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), 
                 pqkey: sphincspk.clone() 
@@ -543,12 +592,43 @@ impl UserCertificatePriv {
             pqsig: sphincssig,
         }
     }
-    pub fn export(&self) {
-
+    /// # Export
+    /// 
+    /// Exports Certificate
+    pub fn export(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(self)
+    }
+    /// # Import
+    /// 
+    /// Imports Certificate
+    pub fn import<T: AsRef<str>>(s: T) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_str(s.as_ref())
     }
     /// Return `UserCertificate`
     pub fn publiccert(&self) -> UserCertificate {
         return self.cert.clone()
+    }
+}
+
+impl UserCertificate {
+    /// Verify Fingerprint and ID8 (static) of -> ED25519PK:SPHINCSPK in BLAKE2B(48) and BLAKE2B(8)
+    pub fn verify(&self) -> bool {
+        // Verify Hash and ID8
+        let fp = get_fingerprint(&self.clkey, &self.pqkey);
+        let id8 = get_fingerprint_8(&self.clkey, &self.pqkey);
+
+        if self.fingerprint == fp && self.id_8 == id8 {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+    pub fn export(&self) -> Result<String, serde_yaml::Error> {
+        serde_yaml::to_string(&self)
+    }
+    pub fn import<T: AsRef<str>>(s: T) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_str(s.as_ref())
     }
 }
 
@@ -581,6 +661,34 @@ pub enum Algorithms {
     ED25519,
 }
 
+/// Get Fingerprint for static id | 48
+fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+    let mut hasher = SlugBlake2bHasher::new(48);
+
+    let mut input: String = String::new();
+    input.push_str(ed25519.to_hex_string().as_str());
+    input.push_str(":");
+    input.push_str(sphincs.to_hex_string().unwrap().as_str());
+
+    let output = hasher.update(input.as_bytes());
+
+    return SlugDigest::from_bytes(&output).unwrap().to_string().to_string()
+}
+
+/// Get Fingerprint for static id | 8-byte
+fn get_fingerprint_8(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+    let mut hasher = SlugBlake2bHasher::new(8usize);
+
+    let mut input: String = String::new();
+    input.push_str(ed25519.to_hex_string().as_str());
+    input.push_str(":");
+    input.push_str(sphincs.to_hex_string().unwrap().as_str());
+
+    let output = hasher.update(input.as_bytes());
+
+    return SlugDigest::from_bytes(&output).unwrap().to_string().to_string()
+}
+
 
 #[test]
 fn nw() {
@@ -592,4 +700,11 @@ fn nw() {
     let sig_validility = RustySignaturesUsage::verify(cert, rustysig);
 
     println!("Is Valid: {}", sig_validility)
+}
+
+#[test]
+fn cert_test() {
+    let privcert = UserCertificatePriv::generate();
+    let yaml = privcert.export().unwrap();
+    println!("{}",yaml)
 }
