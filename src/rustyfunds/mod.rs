@@ -2,6 +2,7 @@
 //! 
 //! [] Add smart contract integration
 //!     [] ETH Verifiy
+//! [] Add generate addresses (wallet)
 
 use serde::{Serialize,Deserialize};
 

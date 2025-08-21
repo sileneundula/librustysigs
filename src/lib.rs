@@ -160,6 +160,8 @@
 //! 
 //! APACHE-2.0
 
+use std::path::Path;
+
 use libslug::slugcrypt::internals::messages::Message;
 // Signatures
 use libslug::slugcrypt::internals::signature::ed25519::{ED25519PublicKey,ED25519SecretKey,ED25519Signature}; // ED25519
@@ -197,9 +199,13 @@ pub mod fs;
 /// All neccessary components
 pub mod prelude;
 
+/// RustyFunds
 pub mod rustyfunds;
 
+/// X59 Certificate Public-Key Infrastructure
 pub mod x59;
+
+pub const CERTVERSION: u8 = 1;
 
 
 /// # User Certificate
@@ -219,14 +225,15 @@ pub mod x59;
 /// ```
 #[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificate {
-    id: Option<u64>, // Stored on keyserver
-    id_8: String,
-    alg: Algorithms,
-    fingerprint: String, // BLAKE2B(48)
+    pub version: u8,
+    pub id: Option<u64>, // Stored on keyserver
+    pub id_8: String,
+    pub alg: Algorithms,
+    pub fingerprint: String, // BLAKE2B(48)
     
     
-    clkey: ED25519PublicKey,
-    pqkey: SPHINCSPublicKey,
+    pub clkey: ED25519PublicKey,
+    pub pqkey: SPHINCSPublicKey,
 
 }
 
@@ -270,18 +277,6 @@ pub struct RustySignature {
     clsig: ED25519Signature,
     pqsig: SPHINCSSignature,
 }
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct MessageHash(pub String);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct MessageBytes(pub Vec<u8>);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct PublicKeyDigest(pub String);
-
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop)]
-pub struct PublicKeyDigestID(pub String);
 
 
 pub struct RustySignaturesUsage;
@@ -426,6 +421,12 @@ impl SigningInfo {
 }
 
 impl RustySignature {
+    /// BLAKE2B (64 byte) digest of RustySignature
+    pub fn digest(&self) -> String {
+        let hasher = SlugBlake2bHasher::new(64);
+        let digest = hasher.update(&self.serialize_to_yaml().expect("Failed to serialize"));
+        SlugDigest::from_bytes(&digest).unwrap().to_string().to_string()
+    }
     fn integrity_blake2(&self) -> Vec<u8> {
         // 512 Blake2B | Switch to Blake2s on no_std version
         let hasher = SlugBlake2bHasher::new(64);
@@ -453,8 +454,15 @@ impl RustySignature {
         let output = SlugDigest::from_bytes(&self.get_integrity_as_bytes(hasher)).unwrap().to_string().to_string();
         return output
     }
+    pub fn serialize_to_yaml(&self) -> Result<String, serde_yaml::Error> {
+        let x = serde_yaml::to_string(&self)?;
+        Ok(x)
+    }
 }
 
+/// # RustySignatureHashingIntegrity
+/// 
+/// Hash the message or data.
 enum RustySignatureHashingIntegrity {
     BLAKE2b_64,
     SHA2_384,
@@ -544,7 +552,8 @@ impl UserCertificatePriv {
         let (sphincspk,sphincssk) = SPHINCSSecretKey::generate();
 
         return Self {
-            cert: UserCertificate { 
+            cert: UserCertificate {
+                version: CERTVERSION, 
                 id: None, 
                 fingerprint: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
                 id_8: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
@@ -652,6 +661,7 @@ pub enum Algorithms {
     ED25519,
 }
 
+/// Get Fingerprint for static id | 48
 fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
     let mut hasher = SlugBlake2bHasher::new(48);
 
@@ -665,8 +675,9 @@ fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> St
     return SlugDigest::from_bytes(&output).unwrap().to_string().to_string()
 }
 
+/// Get Fingerprint for static id | 8-byte
 fn get_fingerprint_8(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
-    let mut hasher = SlugBlake2bHasher::new(8);
+    let mut hasher = SlugBlake2bHasher::new(8usize);
 
     let mut input: String = String::new();
     input.push_str(ed25519.to_hex_string().as_str());
