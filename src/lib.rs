@@ -205,6 +205,8 @@ pub mod rustyfunds;
 /// X59 Certificate Public-Key Infrastructure
 pub mod x59;
 
+pub mod format;
+
 pub const CERTVERSION: u8 = 1;
 
 
