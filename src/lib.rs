@@ -183,6 +183,8 @@ use zeroize::{Zeroize,ZeroizeOnDrop};
 // Serialization
 use serde::{Serialize,Deserialize};
 use serde_yaml;
+use serde::{Serializer,Deserializer};
+use serde::ser::Error;
 
 /// Registry for Keys
 pub mod registry;
