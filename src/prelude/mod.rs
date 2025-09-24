@@ -10,3 +10,5 @@ pub use crate::RustySignaturesUsage;
 
 // Algorithms
 pub use crate::Algorithms;
+
+pub mod certreg;

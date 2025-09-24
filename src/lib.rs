@@ -560,7 +560,7 @@ impl UserCertificatePriv {
                 version: CERTVERSION, 
                 id: None, 
                 fingerprint: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
-                id_8: get_fingerprint(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
+                id_8: get_fingerprint_8(&ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), &sphincspk),
 
                 alg: Algorithms::ShulginSigning, 
                 clkey: ed25519sk.public_key().expect("Failed To Convert ED25519 To Public Key"), 

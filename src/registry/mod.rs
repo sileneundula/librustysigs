@@ -46,6 +46,21 @@ use zeroize::{Zeroize,ZeroizeOnDrop};
 
 use crate::UserCertificate;
 
+use crate::prelude::*;
+
+pub struct CertificateSigningRequest {
+    _type: CertificateType,
+    cert: UserCertificate,
+}
+
+pub enum CertificateType {
+    SelfSigned,
+    CertificateAuthority,
+    Intermediate,
+    WOT,
+    Security,
+}
+
 type PublicKeyID = String;
 
 // Public Key Cache
