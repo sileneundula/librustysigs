@@ -48,9 +48,66 @@ use crate::UserCertificate;
 
 use crate::prelude::*;
 
+
+
+pub enum AlterCertificateInfo {
+    _0x00CREATE_CERTIFICATE,
+    _0x01REVOKE_CERTIFICATE,
+    _0x02UPDATE_CERTIFICATE,
+    _0x03WEBOFTRUST,
+    _0x04SIGNCERTIFICATE,
+    
+
+    _0xf7EMPTYINVALID,
+    _0xf8SIGNKEY,
+    _0xf9SIGNDATA,
+    _0xfaSIGNSOURCE,
+    _0xfbSIGNEPHERMALMESSAGE,
+    _0xfcSIGNCERTIFICATE,
+    _0xfdSIGNFILE,
+    _0xffSIGNEXTENDABLE(u16),
+}
+
+/// # CertificateSigningRequest (CSR)
+/// 
+/// The initial sent signing request from client to server.
+/// 
+/// Requires Signing of UserCertificate.id
 pub struct CertificateSigningRequest {
     _type: CertificateType,
     cert: UserCertificate,
+
+}
+
+pub struct Challenge {
+    challenge: String,
+    reasons: Vec<AlterCertificateInfo>,
+}
+
+pub struct CertificateSigningInitialResponse {
+    csr: CertificateSigningRequest,
+    challenge: String,
+    tx_id: String,
+}
+
+pub struct UserData {
+    email: String,
+    author: String,
+    other: Vec<(String,String)>
+}
+
+pub struct CSR_DOMAIN {
+    top_level: String,
+    name: String,
+    subdomains: Vec<String>,
+
+    namespace: String,
+}
+
+pub struct CertificateSigningRequestResponse {
+    id: u64,
+    _type: CertificateType,
+    cert_domain:
 }
 
 pub enum CertificateType {
