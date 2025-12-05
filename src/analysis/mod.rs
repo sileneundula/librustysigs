@@ -15,6 +15,14 @@ pub struct Analyzer {
     language: AnalyzerLanguage,
 }
 
+pub struct RusticAnalysis;
+
+impl RusticAnalysis {
+    pub fn new() {
+        
+    }
+}
+
 pub enum AnalyzerLanguage {
     Rust,
     Typescript,

@@ -1016,6 +1016,8 @@ dependencies = [
  "serde",
  "serde_yaml 0.9.34+deprecated",
  "slugencode",
+ "syn",
+ "toml",
  "zeroize",
 ]
 
@@ -1593,6 +1595,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 name = "serde_spanned"
@@ -1605,6 +1608,17 @@ dependencies = [
 
 [[package]]
 >>>>>>> Stashed changes
+=======
+name = "serde_spanned"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40734c41988f7306bb04f0ecf60ec0f3f1caa34290e4e8ea471dcd3346483b83"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+>>>>>>> 583c0e1f1eccf84e78208ad206e31b65b6dd090c
 name = "serde_yaml"
 version = "0.8.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1712,6 +1726,7 @@ dependencies = [
 
 [[package]]
 name = "syn"
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 version = "2.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1721,6 +1736,11 @@ version = "2.0.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "390cc9a294ab71bdb1aa2e99d13be9c753cd2d7bd6560c77118597410c4d2e87"
 >>>>>>> Stashed changes
+=======
+version = "2.0.108"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da58917d35242480a05c2897064da0a80589a2a0476c9a3f2fdc83b53502e917"
+>>>>>>> 583c0e1f1eccf84e78208ad206e31b65b6dd090c
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1789,10 +1809,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 name = "toml"
 version = "0.9.8"
+=======
+name = "toml"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75129e1dc5000bfbaa9fee9d1b21f974f9fbad9daec557a521ee6e080825f6e8"
+dependencies = [
+ "indexmap 2.10.0",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_parser",
+ "toml_writer",
+ "winnow",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bade1c3e902f58d73d3f294cd7f20391c1cb2fbcb643b73566bc773971df91e3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_parser"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b551886f449aa90d4fe2bdaa9f4a2577ad2dde302c61ecf262d80b116db95c10"
+dependencies = [
+ "winnow",
+]
+
+[[package]]
+name = "toml_writer"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc842091f2def52017664b53082ecbbeb5c7731092bad69d2c63050401dfd64"
+
+[[package]]
+name = "typenum"
+version = "1.18.0"
+>>>>>>> 583c0e1f1eccf84e78208ad206e31b65b6dd090c
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dc8b1fb61449e27716ec0e1bdf0f6b8f3e8f6b05391e8497b8b6d7804ea6d8"
 dependencies = [
@@ -2049,6 +2113,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 name = "winnow"
@@ -2058,6 +2123,14 @@ checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 
 [[package]]
 >>>>>>> Stashed changes
+=======
+name = "winnow"
+version = "0.7.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21a0236b59786fed61e2a80582dd500fe61f18b5dca67a4a067d0bc9039339cf"
+
+[[package]]
+>>>>>>> 583c0e1f1eccf84e78208ad206e31b65b6dd090c
 name = "winternitz-ots"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
