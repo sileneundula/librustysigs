@@ -48,6 +48,8 @@ use crate::UserCertificate;
 
 use crate::prelude::*;
 
+// Decentralized Certificates
+
 
 
 pub enum AlterCertificateInfo {
@@ -76,7 +78,7 @@ pub enum AlterCertificateInfo {
 pub struct CertificateSigningRequest {
     _type: CertificateType,
     cert: UserCertificate,
-
+    challenge: Challenge,
 }
 
 pub struct Challenge {
@@ -100,14 +102,13 @@ pub struct CSR_DOMAIN {
     top_level: String,
     name: String,
     subdomains: Vec<String>,
-
     namespace: String,
 }
 
 pub struct CertificateSigningRequestResponse {
     id: u64,
     _type: CertificateType,
-    cert_domain:
+    cert_domain: CSR_DOMAIN,
 }
 
 pub enum CertificateType {

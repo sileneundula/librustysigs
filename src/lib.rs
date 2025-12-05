@@ -186,6 +186,9 @@ use serde_yaml;
 use serde::{Serializer,Deserializer};
 use serde::ser::Error;
 
+use libslug::prelude::SlugCSPRNGAPI;
+use slugencode::SlugEncodingUsage;
+
 /// Registry for Keys
 pub mod registry;
 
@@ -227,7 +230,7 @@ pub const CERTVERSION: u8 = 1;
 /// }
 /// 
 /// ```
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
+#[derive(Debug,Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificate {
     pub version: u8,
     pub id: Option<u64>, // Stored on keyserver
@@ -257,7 +260,7 @@ pub struct UserCertificate {
 /// }
 /// 
 /// ```
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
+#[derive(Debug,Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct UserCertificatePriv {
     pub cert: UserCertificate,
     // Secrets
@@ -273,7 +276,7 @@ pub struct UserCertificatePriv {
 /// - Message (a vector of bytes)
 /// - SigningInfo (metadata and rng, as well as checks)
 /// - Signatures (ED25519 and SPHINCS+)
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
+#[derive(Debug,Serialize,Deserialize,Zeroize,ZeroizeOnDrop,Clone)]
 pub struct RustySignature {
     message: Vec<u8>,
     signinginfo: SigningInfo,
@@ -379,7 +382,7 @@ impl RustySignaturesUsage {
 /// # SigningInfo
 /// 
 /// The `SigningInfo` is serialized to YAML and signed. It contains Argon2id RNG (with nonce), and OSCSPRNG for RNG. It also contains the public key hash with the RNG to thwart attacks on randomness while proving the public key in the signature. Finally, it contains the signature ID.
-#[derive(Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
+#[derive(Debug, Serialize,Deserialize,Zeroize,ZeroizeOnDrop, Clone)]
 pub struct SigningInfo {
     pub argon: [u8;32],
     pub oscsprng: [u8;32],
@@ -596,6 +599,30 @@ impl UserCertificatePriv {
             pqsig: sphincssig,
         }
     }
+    pub fn sign_with_os_salt<T: AsRef<[u8]>>(&self, message: T) -> RustySignature {
+        let password = SlugCSPRNGAPI::from_os();
+        let encoder = SlugEncodingUsage::new(slugencode::SlugEncodings::Hex);
+        let final_output = encoder.encode(password).unwrap();
+        let signing_info = Signer::add_to_signing(final_output, &self.cert.clkey, &self.cert.pqkey);
+
+        let mut to_be_signed: Vec<u8> = Vec::new();
+        
+        let serialized_signing_info = signing_info.yamalize();
+        to_be_signed.extend_from_slice(serialized_signing_info.as_bytes());
+        to_be_signed.extend_from_slice(message.as_ref());
+        
+        let sig = self.clkeypriv.sign(&to_be_signed).unwrap();
+        let sphincssig = self.pqkeypriv.sign(Message::new(&to_be_signed)).unwrap();
+
+        return RustySignature {
+            message: message.as_ref().to_vec(),
+            signinginfo: signing_info,
+
+
+            clsig: sig,
+            pqsig: sphincssig,
+        }
+    }
     /// # Export
     /// 
     /// Exports Certificate
@@ -646,7 +673,7 @@ impl UserCertificate {
 /// 1. ShulginSigning
 /// 2. AnneSigning
 /// 3. ED25519
-#[derive(Serialize,Deserialize,Clone,PartialEq,PartialOrd,Zeroize,ZeroizeOnDrop)]
+#[derive(Debug, Serialize,Deserialize,Clone,PartialEq,PartialOrd,Zeroize,ZeroizeOnDrop)]
 pub enum Algorithms {
     ShulginSigning, // ED448 (or ED25519) + SPHINCS+ (SHAKE256) (ML-SLH)
     // SPHINCS+ (Post-Quantum)
@@ -666,7 +693,7 @@ pub enum Algorithms {
 }
 
 /// Get Fingerprint for static id | 48
-fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+pub fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
     let mut hasher = SlugBlake2bHasher::new(48);
 
     let mut input: String = String::new();
@@ -680,7 +707,7 @@ fn get_fingerprint(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> St
 }
 
 /// Get Fingerprint for static id | 8-byte
-fn get_fingerprint_8(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
+pub fn get_fingerprint_8(ed25519: &ED25519PublicKey, sphincs: &SPHINCSPublicKey) -> String {
     let mut hasher = SlugBlake2bHasher::new(8usize);
 
     let mut input: String = String::new();
