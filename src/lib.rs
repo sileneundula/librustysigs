@@ -178,6 +178,7 @@ use libslug::slugcrypt::internals::digest::sha2::Sha2Hasher;
 // RNG
 use libslug::slugcrypt::internals::csprng::SlugCSPRNG;
 
+use slugencode::errors::SlugEncodingError;
 use zeroize::{Zeroize,ZeroizeOnDrop};
 
 // Serialization
@@ -242,6 +243,23 @@ pub struct UserCertificate {
     pub clkey: ED25519PublicKey,
     pub pqkey: SPHINCSPublicKey,
 
+}
+
+impl UserCertificate {
+    pub fn into_public_key_format(&self) -> Result<String,SlugEncodingError> {
+        let mut output: String = String::new();
+        
+        let slugencoder = SlugEncodingUsage::new(slugencode::SlugEncodings::Hex);
+        let classicalkeyhex = slugencoder.encode(self.clkey.as_bytes())?;
+        let postquantumkeyhex = slugencoder.encode(self.pqkey.as_bytes())?;
+
+        output.push_str(&classicalkeyhex);
+        output.push_str(":");
+        output.push_str(&postquantumkeyhex);
+
+        return Ok(output)
+        
+    }
 }
 
 /// # User Certificate (Private/Full)
@@ -737,5 +755,7 @@ fn nw() {
 fn cert_test() {
     let privcert = UserCertificatePriv::generate();
     let yaml = privcert.export().unwrap();
-    println!("{}",yaml)
+    let pk_format = privcert.cert.into_public_key_format().unwrap();
+    println!("{}",yaml);
+    println!("Public Key: {}",pk_format);
 }
