@@ -208,12 +208,18 @@ pub mod prelude;
 /// RustyFunds
 pub mod rustyfunds;
 
+pub mod constants;
+
 /// X59 Certificate Public-Key Infrastructure
 pub mod x59;
 
 pub mod format;
 
+pub mod errors;
+
 pub const CERTVERSION: u8 = 1;
+
+use crate::errors::RustySignatureErrors;
 
 
 /// # User Certificate
@@ -246,6 +252,7 @@ pub struct UserCertificate {
 }
 
 impl UserCertificate {
+    /// # Into Public Key Format
     pub fn into_public_key_format(&self) -> Result<String,SlugEncodingError> {
         let mut output: String = String::new();
         
@@ -259,6 +266,87 @@ impl UserCertificate {
 
         return Ok(output)
         
+    }
+    pub fn into_public_key_format_with_prepended(&self) -> Result<String,SlugEncodingError> {
+        let mut output: String = String::new();
+
+        let x = self.into_public_key_format()?;
+        let prefix = Self::prefix_with_shulgin_signing();
+
+        output.push_str(&prefix);
+        output.push_str(&x);
+
+        return Ok(output)
+
+    }
+    pub fn prefix_with_shulgin_signing() -> String {
+        let mut output: String = String::new();
+        output.push_str(&constants::BRACE_OPEN);
+        output.push_str(&constants::RUSTYSIGSPREFIX);
+        output.push_str(&constants::PATH_ADDITION);
+        output.push_str(&constants::SHULGINSIGNINGPREFIX);
+        output.push_str(&constants::BRACE_CLOSE);
+
+        return output
+    }
+    /// # From Public Key Format
+    /// 
+    /// Public Key Format: ED25519_PK(32):SPHINCS+(64)
+    pub fn from_public_key_format<T: AsRef<str>>(pk: T) -> Result<Self, RustySignatureErrors> {
+        let x = pk.as_ref();
+
+        let pk_iter: Vec<&str> = x.split(":").collect();
+
+        let mut ed25519_stack: [u8;32] = [0u8;32];
+
+        println!("{}",pk_iter.len());
+
+        let ed25519 = ED25519PublicKey::from_hex_string(pk_iter[0]);
+        println!("{}",pk_iter.len());
+        let sphincs = SPHINCSPublicKey::from_hex_string(pk_iter[1]);
+        
+        let ed25519_bytes = match ed25519 {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::EncodingError),
+        };
+
+        let sphincs_bytes = match sphincs {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::EncodingError),
+        };
+
+        if ed25519_bytes.len() == 32 {
+            ed25519_stack.copy_from_slice(&ed25519_bytes);
+        }
+        else {
+            return Err(RustySignatureErrors::EncodingError)
+        }
+
+        let ed25519_output = ED25519PublicKey::from_bytes(ed25519_stack);
+
+        let sphincs = SPHINCSPublicKey::from_bytes(&sphincs_bytes);
+
+        let sphincs_output = match sphincs {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::EncodingError),
+        };
+
+        let fingerprint_8 = get_fingerprint_8(&ed25519_output.clone(), &sphincs_output.clone());
+        let fingerprint = get_fingerprint(&ed25519_output.clone(), &sphincs_output.clone());
+
+        Ok(Self {
+            version: CERTVERSION,
+            id: None,
+            id_8: fingerprint_8,
+            alg: Algorithms::ShulginSigning,
+            fingerprint: fingerprint,
+
+            clkey: ed25519_output,
+            pqkey: sphincs_output,
+        })
+
+
+
     }
 }
 
@@ -617,6 +705,9 @@ impl UserCertificatePriv {
             pqsig: sphincssig,
         }
     }
+    /// # Sign With OS SALT
+    /// 
+    /// Signs using Operating System Randomness with the usual signature scheme so does not require an ephermal password.
     pub fn sign_with_os_salt<T: AsRef<[u8]>>(&self, message: T) -> RustySignature {
         let password = SlugCSPRNGAPI::from_os();
         let encoder = SlugEncodingUsage::new(slugencode::SlugEncodings::Hex);
@@ -758,4 +849,21 @@ fn cert_test() {
     let pk_format = privcert.cert.into_public_key_format().unwrap();
     println!("{}",yaml);
     println!("Public Key: {}",pk_format);
+}
+
+#[test]
+fn certificate() {
+    let cert = UserCertificatePriv::generate();
+    let x = cert.publiccert();
+    
+    let pkf = x.into_public_key_format().unwrap();
+    let pkfpre = x.into_public_key_format_with_prepended().unwrap();
+    let from_format: UserCertificate = UserCertificate::from_public_key_format(pkf.clone()).unwrap();
+    let output = from_format.into_public_key_format().unwrap();
+
+    println!("{}", pkf.clone());
+    println!("{}", pkfpre);
+    println!("{:?}", from_format);
+    println!();
+    println!("{}", output);
 }
