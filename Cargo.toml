@@ -1,3 +1,7 @@
+[workspace]
+resolve = "3"
+members = ["librustyfunds"]
+
 [package]
 name = "librustysigs"
 authors = ["silene0259", "0x20CB", "DionysianMyst"]

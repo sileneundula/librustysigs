@@ -1,0 +1,9 @@
+[package]
+name = "librustyfunds"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitcoin = "0.32.8"
+ethaddr = "0.2.2"
+bitcoincash-addr = "0.5.2"

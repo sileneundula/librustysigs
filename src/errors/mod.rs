@@ -1,4 +1,4 @@
 #[derive(Debug)]
 pub enum RustySignatureErrors {
-    EncodingError,
+    EncodingError(u8),
 }

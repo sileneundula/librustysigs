@@ -11,6 +11,9 @@
 
 use serde::{Serialize,Deserialize};
 
+/// # RustyFunds
+/// 
+/// Funding For Rust Community Signed By Digital Certificates
 pub struct RustyFunds;
 
 pub struct RustyFundsBCH {

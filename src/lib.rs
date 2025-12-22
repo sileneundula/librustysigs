@@ -10,6 +10,9 @@
 //! 
 //! ## TODO
 //! 
+//! - [X] Serialization
+//!     - [ ]
+//! 
 //! - [X] Basic Signature Implementation (ShulginSigning)
 //!     - [X] ED25519
 //!     - [X] SPHINCS+ (SHAKE256)
@@ -161,10 +164,11 @@
 //! APACHE-2.0
 
 use std::path::Path;
+use std::string::FromUtf8Error;
 
 use libslug::slugcrypt::internals::messages::Message;
 // Signatures
-use libslug::slugcrypt::internals::signature::ed25519::{ED25519PublicKey,ED25519SecretKey,ED25519Signature}; // ED25519
+use libslug::slugcrypt::internals::signature::ed25519::{self, ED25519PublicKey, ED25519SecretKey, ED25519Signature}; // ED25519
 use libslug::slugcrypt::internals::signature::sphincs_plus::{SPHINCSPublicKey,SPHINCSSignature,SPHINCSSecretKey}; // SPHINCS+ (SHAKE256) Level 5
 use libslug::slugcrypt::internals::signature::ml_dsa::{SlugMLDSA3,MLDSA3Keypair,MLDSA3PublicKey,MLDSA3SecretKey,MLDSA3Signature}; // Dilihtium (ML-DSA65) Level 3
 
@@ -299,36 +303,34 @@ impl UserCertificate {
 
         let mut ed25519_stack: [u8;32] = [0u8;32];
 
-        println!("{}",pk_iter.len());
+        let ed25519 = ED25519PublicKey::from_hex_string(pk_iter[0].to_ascii_uppercase());
 
-        let ed25519 = ED25519PublicKey::from_hex_string(pk_iter[0]);
-        println!("{}",pk_iter.len());
-        let sphincs = SPHINCSPublicKey::from_hex_string(pk_iter[1]);
+        let sphincs = SPHINCSPublicKey::from_hex_string(pk_iter[1].to_ascii_uppercase());
         
         let ed25519_bytes = match ed25519 {
             Ok(v) => v,
-            Err(_) => return Err(RustySignatureErrors::EncodingError),
+            Err(_) => return Err(RustySignatureErrors::EncodingError(00)),
         };
 
         let sphincs_bytes = match sphincs {
             Ok(v) => v,
-            Err(_) => return Err(RustySignatureErrors::EncodingError),
+            Err(_) => return Err(RustySignatureErrors::EncodingError(01)),
         };
 
         if ed25519_bytes.len() == 32 {
             ed25519_stack.copy_from_slice(&ed25519_bytes);
         }
         else {
-            return Err(RustySignatureErrors::EncodingError)
+            return Err(RustySignatureErrors::EncodingError(02))
         }
 
         let ed25519_output = ED25519PublicKey::from_bytes(ed25519_stack);
 
-        let sphincs = SPHINCSPublicKey::from_bytes(&sphincs_bytes);
+        let sphincs_2 = SPHINCSPublicKey::from_bytes(&sphincs_bytes);
 
-        let sphincs_output = match sphincs {
+        let sphincs_output = match sphincs_2 {
             Ok(v) => v,
-            Err(_) => return Err(RustySignatureErrors::EncodingError),
+            Err(_) => return Err(RustySignatureErrors::EncodingError(03)),
         };
 
         let fingerprint_8 = get_fingerprint_8(&ed25519_output.clone(), &sphincs_output.clone());
@@ -373,6 +375,26 @@ pub struct UserCertificatePriv {
     pub clkeypriv: ED25519SecretKey,
     pub pqkeypriv: SPHINCSSecretKey,
     pub pqkeypub: SPHINCSPublicKey,
+}
+
+impl UserCertificatePriv {
+    pub fn into_secret_key_format(&self) -> Result<String, FromUtf8Error> {
+        let mut output: String = String::new();
+        
+        let x_cl = self.clkeypriv.to_hex_string();
+        let x_pq = self.pqkeypriv.to_hex_string()?;
+        let x_pq_pk = self.pqkeypub.to_hex_string()?;
+
+        output.push_str(&x_cl);
+        output.push_str(":");
+        output.push_str(&x_pq);
+        output.push_str(":");
+        output.push_str(&x_pq_pk);
+
+        Ok(output)
+
+
+    }
 }
 
 /// # RustySignature
@@ -858,10 +880,12 @@ fn certificate() {
     
     let pkf = x.into_public_key_format().unwrap();
     let pkfpre = x.into_public_key_format_with_prepended().unwrap();
+println!("{}", pkf.clone());
+
     let from_format: UserCertificate = UserCertificate::from_public_key_format(pkf.clone()).unwrap();
     let output = from_format.into_public_key_format().unwrap();
 
-    println!("{}", pkf.clone());
+    
     println!("{}", pkfpre);
     println!("{:?}", from_format);
     println!();
