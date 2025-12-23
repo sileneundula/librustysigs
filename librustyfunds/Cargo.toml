@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 bitcoin = "0.32.8"
 ethaddr = "0.2.2"
-bitcoincash-addr = "0.5.2"
-bitcoincash = "0.29.2"
+cashaddr = "0.2.0"
+blake2-rfc = "0.2.18"
+bs58 = "0.5.1"

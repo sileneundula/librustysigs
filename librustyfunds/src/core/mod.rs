@@ -1,10 +1,16 @@
+//! # Rustic Funds
+//! 
+//! 
+
+
 pub mod btc;
 
 use bitcoin::Address as BtcAddress;
 use bitcoin::AddressType as BtcAddressType;
-use bitcoincash_addr::AddressCodec;
-use bitcoincash_addr::cashaddr::CashAddrCodec;
-use bitcoincash::Address as BchAddress;
+
+use blake2_rfc::blake2b::Blake2b;
+
+use bs58;
 
 use std::str::FromStr;
 
@@ -13,10 +19,63 @@ use std::str::FromStr;
 /// A structure to hold multiple cryptocurrency addresses.
 #[derive(Debug,Clone,PartialEq,PartialOrd)]
 pub struct RusticFunds {
-    primary_address: Address, // Bitcoin Cash
+    pub primary_address: Address, // Bitcoin Cash
     // Additional addresses for other cryptocurrencies
-    addresses: Vec<Address>, // addresses
-    checksum: String, // 8-byte blake2b
+    pub addresses: Option<Vec<Address>>, // addresses
+    pub checksum: Option<String>, // 8-byte blake2b
+}
+
+impl RusticFunds {
+    pub fn new(addr: Address) -> Self {
+
+        let mut address = Self {
+            primary_address: addr,
+            addresses: None,
+            checksum: None,
+        };
+
+        let checksum = address.checksum_8();
+
+        address.checksum = Some(checksum);
+
+        return address
+    }
+    /// Checksum In BLAKE2B(8) Encoded in Base58
+    fn checksum_8(&self) -> String {
+        let mut hasher = Blake2b::new(8);
+
+        let addresses = Self::get_addresses(&self);
+
+        for x in addresses {
+            hasher.update(&x._type.as_bytes());
+            hasher.update(&x.address.as_bytes());
+        }
+
+        let output = hasher.finalize().as_bytes();
+        
+        let state = bs58::encode(output).into_string();
+
+        return state
+        
+    }
+    fn get_addresses(&self) -> Vec<Address> {
+        let mut sorted: Vec<Address> = vec![];
+
+        sorted.push(self.primary_address.clone());
+        
+        if self.addresses.is_some() {
+
+            let added_addresses: Vec<Address> = self.addresses.clone().unwrap();
+            
+            for i in added_addresses {
+                sorted.push(i);
+            }
+        }
+        else {
+            return sorted
+        }
+        return sorted
+    }
 }
 
 #[derive(Debug,Clone,PartialEq,PartialOrd)]
@@ -67,7 +126,7 @@ impl Address {
         }
         else if output == AddressType::BCH {
             // Bitcoin Cash Address Validation
-            if BchAddress:: {
+            if  {
                 return Ok(Address {
                     _type: _type.as_ref().to_string(),
                     address: address.as_ref().to_string(),
