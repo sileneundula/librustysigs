@@ -1,6 +1,21 @@
 //! # Rustic Funds
 //! 
+//! ## Features
 //! 
+//! - [X] Cryptocurrencies
+//!     - [X] BTC
+//!     - [X] ETH
+//!     - [ ] BCH
+//!     - [X] Checksum (8 bytes in Base58)
+//! - [ ] Other Funding
+//! - [ ] Signing Addresses
+//!     - [ ] BTC
+//!     - [ ] ETH
+//!     - [ ] BCH
+//! - [ ] Badges
+//!     - [ ] Funding
+//!     - [ ] Security
+//!     - [ ] Audit
 
 
 pub mod btc;
@@ -51,14 +66,15 @@ impl RusticFunds {
             hasher.update(&x.address.as_bytes());
         }
 
-        let output = hasher.finalize().as_bytes();
+        let output = hasher.finalize();
+        let bytes = output.as_bytes();
         
-        let state = bs58::encode(output).into_string();
+        let state = bs58::encode(bytes).into_string();
 
         return state
         
     }
-    fn get_addresses(&self) -> Vec<Address> {
+    pub fn get_addresses(&self) -> Vec<Address> {
         let mut sorted: Vec<Address> = vec![];
 
         sorted.push(self.primary_address.clone());
@@ -119,7 +135,7 @@ impl Address {
                     _type: _type.as_ref().to_string(),
                     address: address.as_ref().to_string(),
                 })
-            } 
+            }
             else {
                 return Err(crate::errors::Errors::InvalidEthAddress);
             }

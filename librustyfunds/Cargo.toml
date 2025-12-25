@@ -4,8 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Address Parsing
 bitcoin = "0.32.8"
 ethaddr = "0.2.2"
 cashaddr = "0.2.0"
+
+# Checksum
 blake2-rfc = "0.2.18"
+
+# Encoding
 bs58 = "0.5.1"
+
+# Serialization
+serde = {version="1.0.0", features=["derive"]}
+
+# Error
+thiserror = "2.0.17"

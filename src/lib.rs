@@ -257,6 +257,10 @@ pub struct UserCertificate {
 
 impl UserCertificate {
     /// # Into Public Key Format
+    /// 
+    /// ## Definitions
+    /// 
+    /// **Public Key Format:** `<ED25519_PK>:<SPHINCS_PK>` *with bytes encoded in hexadecimal*
     pub fn into_public_key_format(&self) -> Result<String,SlugEncodingError> {
         let mut output: String = String::new();
         
@@ -271,6 +275,11 @@ impl UserCertificate {
         return Ok(output)
         
     }
+    /// # Into Public Key Format (With Prepended Data)
+    /// 
+    /// ## Definitions
+    /// 
+    /// `[RustySigs/ShulginSigning]<ED25519_PK>:<SPHINCS_PK>`
     pub fn into_public_key_format_with_prepended(&self) -> Result<String,SlugEncodingError> {
         let mut output: String = String::new();
 
@@ -378,6 +387,11 @@ pub struct UserCertificatePriv {
 }
 
 impl UserCertificatePriv {
+    /// # Into Secret Key Format
+    /// 
+    /// ## Definitions
+    /// 
+    /// `<ED25519_SK>:<SPHINCS_SK>:<SPHINCS_PK>`
     pub fn into_secret_key_format(&self) -> Result<String, FromUtf8Error> {
         let mut output: String = String::new();
         
@@ -394,6 +408,99 @@ impl UserCertificatePriv {
         Ok(output)
 
 
+    }
+
+    /// # Format
+    /// 
+    /// Used to export secret key. Contains three values:
+    /// 
+    /// 1. ED25519 Secret Key (which can be converted to Public Key)
+    /// 2. SPHINCS+ Secret Key
+    /// 3. SPHINCS+ Public Key (needs to be kept with private key)
+    /// 
+    /// ## Definition
+    /// 
+    /// `ED25519SK:SPHINCSSK:SPHINCSPK`
+    pub fn from_secret_key_format<T: AsRef<str>>(sk: T) -> Result<Self, RustySignatureErrors> {
+        let x = sk.as_ref();
+        let sk_iter: Vec<&str> = x.split(":").collect();
+
+        let (ed25519_sk, ed25519_pk) = Self::from_ed25519_hex(sk_iter[0])?;
+        let (sphincs_sk, sphincs_pk) = Self::from_sphincs_hex(sk_iter[1], sk_iter[2])?;
+
+        let certificate = UserCertificate {
+            version: CERTVERSION,
+            id: None,
+            id_8: get_fingerprint_8(&ed25519_pk, &sphincs_pk),
+            fingerprint: get_fingerprint(&ed25519_pk, &sphincs_pk),
+            alg: Algorithms::ShulginSigning,
+            pqkey: sphincs_pk.clone(),
+            clkey: ed25519_pk,
+        };
+
+        Ok(Self {
+            cert: certificate,
+
+            clkeypriv: ed25519_sk,
+            pqkeypriv: sphincs_sk,
+            pqkeypub: sphincs_pk.clone(),  
+        })
+    }
+    pub fn from_ed25519_hex(s: &str) -> Result<(ED25519SecretKey,ED25519PublicKey), RustySignatureErrors> {
+        let output = ED25519SecretKey::from_hex_string(s.to_ascii_uppercase());
+
+        let ed25519_sk_bytes = match output {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::ED25519Error(0))
+        };
+
+        let ed25519_converted = ED25519SecretKey::from_bytes(ed25519_sk_bytes);
+
+        let output = match ed25519_converted {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::ED25519Error(1))
+        };
+
+        let public_key = output.public_key();
+
+        let output_pk = match public_key {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::ED25519Error(2))
+        };
+
+        return Ok((output,output_pk))
+
+    }
+    pub fn from_sphincs_hex(sk: &str, pk: &str) -> Result<(SPHINCSSecretKey,SPHINCSPublicKey),RustySignatureErrors> {
+        let sphincs_pk_bytes = SPHINCSPublicKey::from_hex_string(pk.to_ascii_uppercase());
+
+        let bytes_pk = match sphincs_pk_bytes {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::SPHINCSError(0))
+        };
+
+        let sphincs_pk = SPHINCSPublicKey::from_bytes(&bytes_pk);
+
+        let output_pk = match sphincs_pk {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::SPHINCSError(1))
+        };
+
+        let sphincs_sk_bytes = SPHINCSSecretKey::from_hex_string(sk.to_ascii_uppercase());
+
+        let bytes_sk = match sphincs_sk_bytes {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::SPHINCSError(2))
+        };
+
+        let sphincs_sk = SPHINCSSecretKey::from_bytes(&bytes_sk);
+
+        let sphincs_output_sk = match sphincs_sk {
+            Ok(v) => v,
+            Err(_) => return Err(RustySignatureErrors::SPHINCSError(3))
+        };
+
+        return Ok((sphincs_output_sk, output_pk))
     }
 }
 
