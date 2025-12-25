@@ -5,7 +5,11 @@
 //! - [X] Cryptocurrencies
 //!     - [X] BTC
 //!     - [X] ETH
-//!     - [ ] BCH
+//!     - [ ] BCH (needs to be worked on)
+//!     - [ ] Privacy Cryptocurrency
+//!         - [ ] XMR
+//!         - [ ] ZEC
+//! 
 //!     - [X] Checksum (8 bytes in Base58)
 //! - [ ] Other Funding
 //! - [ ] Signing Addresses
@@ -22,6 +26,9 @@ pub mod btc;
 
 use bitcoin::Address as BtcAddress;
 use bitcoin::AddressType as BtcAddressType;
+
+use bitcoincash_addr::AddressCodec;
+use bitcoincash_addr::Address as BchAddress;
 
 use blake2_rfc::blake2b::Blake2b;
 
@@ -142,7 +149,7 @@ impl Address {
         }
         else if output == AddressType::BCH {
             // Bitcoin Cash Address Validation
-            if  {
+            if BchAddress::decode(address.as_ref()).is_ok() {
                 return Ok(Address {
                     _type: _type.as_ref().to_string(),
                     address: address.as_ref().to_string(),

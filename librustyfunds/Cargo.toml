@@ -7,7 +7,9 @@ edition = "2024"
 # Address Parsing
 bitcoin = "0.32.8"
 ethaddr = "0.2.2"
-cashaddr = "0.2.0"
+# cashaddr = "0.2.0"
+
+bitcoincash-addr = "0.5.2"
 
 # Checksum
 blake2-rfc = "0.2.18"

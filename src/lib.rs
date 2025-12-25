@@ -454,7 +454,7 @@ impl UserCertificatePriv {
             Err(_) => return Err(RustySignatureErrors::ED25519Error(0))
         };
 
-        let ed25519_converted = ED25519SecretKey::from_bytes(ed25519_sk_bytes);
+        let ed25519_converted = ED25519SecretKey::from_bytes(&ed25519_sk_bytes);
 
         let output = match ed25519_converted {
             Ok(v) => v,
