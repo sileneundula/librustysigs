@@ -159,6 +159,15 @@
 //!     - BLAKE3
 //! - Verification
 //! 
+//! 
+//! ## TODO:
+//! 
+//! - [ ] Serialization of UserCertificate, UserCertificatePriv
+//! - [ ] Signature Serialization
+//! - [ ] Sign with Operating System Randomness
+//! - [ ] RustyFunds
+//! - [ ] Backend
+//! 
 //! ## License
 //! 
 //! APACHE-2.0
@@ -252,8 +261,8 @@ pub struct UserCertificate {
     
     pub clkey: ED25519PublicKey,
     pub pqkey: SPHINCSPublicKey,
-
 }
+
 
 impl UserCertificate {
     /// # Into Public Key Format
@@ -358,6 +367,9 @@ impl UserCertificate {
 
 
 
+    }
+    pub fn experimental_export(&self) {
+        
     }
 }
 
@@ -699,6 +711,10 @@ impl RustySignature {
     pub fn serialize_to_yaml(&self) -> Result<String, serde_yaml::Error> {
         let x = serde_yaml::to_string(&self)?;
         Ok(x)
+    }
+    pub fn from_yaml<T: AsRef<str>>(s: T) -> Result<Self, serde_yaml::Error> {
+        let x: Self = serde_yaml::from_str(s.as_ref())?;
+        return Ok(x)
     }
 }
 

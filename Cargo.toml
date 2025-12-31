@@ -24,8 +24,6 @@ serde = {version = "1.0.0", features=["derive"]}
 serde_yaml = "=0.9.34"
 # Zeroize
 zeroize = "1.8.1"
-# HashMap
-hashbrown = "0.15.5"
 # Time
 chrono = {version = "0.4.41", features=["serde"]}
 
@@ -35,12 +33,4 @@ hex = "0.4.3"
 cms = "0.2.3"
 pem = "3.0.5"
 
-bincode = "2.0.1"
-
 toml = "0.9.5"
-
-syn = "2.0.108"
-
-nom = "8.0.0"
-
-regex = "1.12.2"
